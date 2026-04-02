@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Plotter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg:#f7f7f5;
+  --surface:#ffffff;
+  --surface2:#f2f2ef;
+  --border:#e5e5e1;
+  --border2:#d5d5d0;
+  --text:#1a1a18;
+  --text2:#6b6b65;
+  --text3:#a8a8a2;
+  --accent:#2563eb;
+  --accent-light:#eff4ff;
+  --accent-hover:#1d4ed8;
+  --red:#dc2626;
+  --radius:10px;
+  --radius-sm:7px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:var(--text);padding:20px;min-height:100vh}
+
+/* ── page ── */
+.page{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.page-header{display:flex;align-items:center;gap:10px;padding-bottom:2px}
+.page-title{font-size:16px;font-weight:600;color:var(--text);letter-spacing:-.01em}
+.page-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+
+/* ── layout ── */
+.layout{display:grid;grid-template-columns:240px 1fr;gap:14px;align-items:start}
+
+/* ── card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-body{padding:14px}
+.card-header{padding:12px 14px 0;display:flex;align-items:center;justify-content:space-between}
+.section{padding:10px 0;border-top:1px solid var(--surface2)}
+.section:first-child{padding-top:0;border-top:none}
+.section-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+
+/* ── form ── */
+.field{margin-bottom:7px}
+.field:last-child{margin-bottom:0}
+.lbl{font-size:10px;font-weight:500;color:var(--text2);display:block;margin-bottom:3px}
+input[type=text],input[type=number]{
+  font-family:'DM Sans',sans-serif;font-size:12px;
+  padding:6px 9px;border:1px solid var(--border);
+  border-radius:var(--radius-sm);background:var(--surface);color:var(--text);
+  outline:none;width:100%;transition:border-color .15s,box-shadow .15s}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+input::placeholder{color:var(--text3)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+
+/* ── segmented ── */
+.seg-wrap{margin-bottom:0}
+.seg{display:inline-flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px;gap:2px;width:100%}
+.seg button{flex:1;border:none;background:transparent;padding:5px 4px;font-size:10px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--text2);border-radius:5px;transition:all .15s;white-space:nowrap}
+.seg button:hover:not(.on){background:rgba(0,0,0,.04);color:var(--text)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow);font-weight:600}
+
+/* ── toggle ── */
+.tgl{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.tgl:last-child{margin-bottom:0}
+.tgl input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+.tgl label{font-size:11px;color:var(--text2);cursor:pointer;user-select:none}
+
+/* ── color picker inline ── */
+.cp-pair{display:flex;gap:8px;margin-bottom:8px}
+.cp-item{display:flex;align-items:center;gap:6px;flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px}
+.cp-item label{font-size:10px;font-weight:500;color:var(--text2);flex:1;white-space:nowrap}
+.cp-swatch{width:24px;height:18px;border-radius:4px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0;cursor:pointer}
+.cp-swatch input[type=color]{width:100%;height:100%;border:none;padding:0;cursor:pointer;display:block}
+
+/* ── axis color row ── */
+.axis-colors{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.axis-cp{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px}
+.axis-cp label{font-size:10px;font-weight:500;color:var(--text2);flex:1}
+
+/* ── tabs ── */
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tab{flex:1;padding:6px 0;font-size:11px;font-weight:500;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);cursor:pointer;color:var(--text2);transition:all .15s}
+.tab:hover:not(.on){background:var(--surface);color:var(--text)}
+.tab.on{background:var(--surface);color:var(--text);font-weight:600;border-color:var(--border2);box-shadow:var(--shadow)}
+.ds{display:none}.ds.on{display:block}
+
+/* ── dataset header ── */
+.ds-hdr{display:flex;align-items:center;gap:7px;margin-bottom:10px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.ds-hdr input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.ds-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,0,0,.08)}
+.ds-hdr input[type=text]{flex:1;font-size:12px;font-weight:500;background:transparent;border:none;padding:0;outline:none;color:var(--text)}
+.ds-hdr input[type=text]:focus{box-shadow:none}
+
+/* ── data table ── */
+.dt-wrap{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding:6px 8px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center}
+td{border-bottom:1px solid var(--surface2);padding:1px}
+tr:last-child td{border-bottom:none}
+td input{border:none;background:transparent;text-align:center;width:100%;font-size:12px;font-family:'DM Mono',monospace;color:var(--text);padding:5px 6px;outline:none}
+td input:focus{background:var(--accent-light)}
+.del-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:4px 8px;width:100%;font-family:'DM Sans',sans-serif;transition:color .12s}
+.del-btn:hover{color:var(--red)}
+
+/* ── buttons ── */
+.btn-row{display:flex;gap:6px}
+.btn{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;border-radius:var(--radius-sm);padding:7px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:all .15s}
+.btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--text)}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff;flex:1;font-weight:600}
+.btn-accent:hover{background:var(--accent-hover);border-color:var(--accent-hover);color:#fff}
+
+/* ── stats ── */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px}
+.stat-title{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.stat-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--surface2)}
+.stat-row:last-child{border-bottom:none;padding-bottom:0}
+.stat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stat-val{font-size:12px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace}
+.stat-name{font-size:10px;color:var(--text3);margin-left:auto;max-width:80px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-empty{font-size:11px;color:var(--text3);text-align:center;padding:6px 0}
+
+/* ── chart ── */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.chart-top{padding:10px 14px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--surface2)}
+.chart-meta{display:flex;align-items:center;gap:10px}
+.ratio-badge{font-size:9px;font-weight:600;letter-spacing:.06em;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-family:'DM Mono',monospace}
+.legend{display:flex;gap:10px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:500;color:var(--text2)}
+.leg-dot{width:8px;height:8px;border-radius:50%}
+.chart-body{padding:12px}
+.chart-wrap{position:relative;width:100%;max-width:600px;margin:0 auto}
+.chart-inner{position:relative;width:100%;overflow:hidden;border-radius:var(--radius-sm);border:1px solid var(--border)}
+
+/* ── hidden ── */
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Graph Plotter</div>
+      <div class="page-sub">scatter · trendline · multi-axis</div>
+    </div>
+  </div>
+
+  <!-- Main layout -->
+  <div class="layout">
+
+    <!-- ══ LEFT ══ -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <!-- Labels & Axes -->
+      <div class="card">
+        <div class="card-body">
+          <div class="section">
+            <div class="section-label">กราฟและแกน</div>
+            <div class="field"><label class="lbl">ชื่อกราฟ</label><input type="text" id="title" placeholder="เช่น Lineweaver-Burk Plot"></div>
+            <div class="field"><label class="lbl">ชื่อแกน X</label><input type="text" id="xlabel" placeholder="X"></div>
+          </div>
+
+          <div class="section" style="padding-top:10px">
+            <div class="section-label">แกน Y</div>
+            <div class="seg-wrap" style="margin-bottom:8px">
+              <div class="seg" id="yModeSeg">
+                <button class="on" onclick="setYMode(1,this)">Single</button>
+                <button onclick="setYMode(2,this)">Double</button>
+                <button onclick="setYMode(3,this)">Triple</button>
+              </div>
+            </div>
+            <div class="field"><label class="lbl" id="lbl_y1">Y1 (ซ้าย)</label><input type="text" id="ylabel1" placeholder="ชื่อแกน Y1"></div>
+            <div class="field hidden" id="row_y2"><label class="lbl">Y2 (ขวา)</label><input type="text" id="ylabel2" placeholder="ชื่อแกน Y2"></div>
+            <div class="field hidden" id="row_y3"><label class="lbl">Y3 (ขวา)</label><input type="text" id="ylabel3" placeholder="ชื่อแกน Y3"></div>
+            <div style="margin-top:8px">
+              <div class="lbl" style="margin-bottom:4px">ตำแหน่งแกน Y1</div>
+              <div class="seg" id="yPosSeg">
+                <button class="on" onclick="setYPos('left',this)">Left</button>
+                <button onclick="setYPos('center',this)">Center</button>
+                <button onclick="setYPos('right',this)">Right</button>
+                <button onclick="setYPos('both',this)">Both</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section" style="padding-top:10px">
+            <div class="section-label">อัตราส่วนกราฟ</div>
+            <div class="seg" id="ratioSeg">
+              <button onclick="setRatio(4/3,this)">4:3</button>
+              <button class="on" onclick="setRatio(5/3,this)">5:3</button>
+              <button onclick="setRatio(16/9,this)">16:9</button>
+              <button onclick="setRatio(1,this)">1:1</button>
+            </div>
+          </div>
+
+          <div class="section" style="padding-top:10px">
+            <div class="section-label">สีแกน</div>
+            <div class="axis-colors">
+              <div class="axis-cp"><label>แกน X</label><div class="cp-swatch"><input type="color" id="xAxisColor" value="#1a1a18"></div></div>
+              <div class="axis-cp"><label>แกน Y</label><div class="cp-swatch"><input type="color" id="yAxisColor" value="#1a1a18"></div></div>
+            </div>
+          </div>
+
+          <div class="section" style="padding-top:10px">
+            <div class="section-label">สมการในกราฟ</div>
+            <div class="tgl"><input type="checkbox" id="showEq" checked><label for="showEq">แสดงสมการ y = mx + b</label></div>
+            <div class="tgl"><input type="checkbox" id="showR2c" checked><label for="showR2c">แสดงค่า R²</label></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Range & Tick -->
+      <div class="card">
+        <div class="card-body">
+          <div class="section">
+            <div class="section-label">แกน X</div>
+            <div class="g2">
+              <div class="field"><label class="lbl">min</label><input type="number" id="xmin" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">max</label><input type="number" id="xmax" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">Major</label><input type="number" id="xmajor" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">Minor</label><input type="number" id="xminor" step="any" placeholder="—"></div>
+            </div>
+          </div>
+          <div class="section" style="padding-top:10px">
+            <div class="section-label">แกน Y1</div>
+            <div class="g2">
+              <div class="field"><label class="lbl">min</label><input type="number" id="ymin" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">max</label><input type="number" id="ymax" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">Major</label><input type="number" id="ymajor" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">Minor</label><input type="number" id="yminor" step="any" placeholder="—"></div>
+            </div>
+          </div>
+          <div class="section hidden" id="y2range" style="padding-top:10px">
+            <div class="section-label">แกน Y2</div>
+            <div class="g2">
+              <div class="field"><label class="lbl">min</label><input type="number" id="y2min" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">max</label><input type="number" id="y2max" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">Major</label><input type="number" id="y2major" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">Minor</label><input type="number" id="y2minor" step="any" placeholder="—"></div>
+            </div>
+          </div>
+          <div class="section hidden" id="y3range" style="padding-top:10px">
+            <div class="section-label">แกน Y3</div>
+            <div class="g2">
+              <div class="field"><label class="lbl">min</label><input type="number" id="y3min" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">max</label><input type="number" id="y3max" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">Major</label><input type="number" id="y3major" step="any" placeholder="auto"></div>
+              <div class="field"><label class="lbl">Minor</label><input type="number" id="y3minor" step="any" placeholder="—"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RIGHT: Datasets ══ -->
+    <div class="card">
+      <div class="card-body">
+        <div class="section">
+          <div class="section-label">ข้อมูล</div>
+          <div class="tabs">
+            <button class="tab on" onclick="switchTab(0,this)">Dataset 1</button>
+            <button class="tab" onclick="switchTab(1,this)">Dataset 2</button>
+            <button class="tab" onclick="switchTab(2,this)">Dataset 3</button>
+          </div>
+
+          <!-- DS 0 -->
+          <div class="ds on" id="dsp0">
+            <div class="ds-hdr">
+              <input type="checkbox" id="dse0" checked>
+              <div class="ds-dot" id="dot0" style="background:#2563eb"></div>
+              <input type="text" id="dsname0" value="Dataset 1" placeholder="ชื่อ dataset">
+            </div>
+            <!-- Colors -->
+            <div class="cp-pair">
+              <div class="cp-item"><label>สีจุด</label><div class="cp-swatch"><input type="color" id="dscol0" value="#2563eb" oninput="document.getElementById('dot0').style.background=this.value"></div></div>
+              <div class="cp-item"><label>Trendline</label><div class="cp-swatch"><input type="color" id="dstrcol0" value="#dc2626"></div></div>
+            </div>
+            <!-- Y axis -->
+            <div class="section-label" style="margin-bottom:4px">แกน Y</div>
+            <div class="seg" id="yaxseg0" style="margin-bottom:10px">
+              <button class="on" onclick="setDsY(0,1,this)">Y1</button>
+              <button onclick="setDsY(0,2,this)" style="display:none">Y2</button>
+              <button onclick="setDsY(0,3,this)" style="display:none">Y3</button>
+            </div>
+            <!-- Line mode -->
+            <div class="section-label" style="margin-bottom:4px">รูปแบบเส้น</div>
+            <div class="seg" id="lseg0" style="margin-bottom:10px">
+              <button class="on" onclick="setLine(0,'none',this)">จุดเท่านั้น</button>
+              <button onclick="setLine(0,'line',this)">เส้นตรง</button>
+              <button onclick="setLine(0,'smooth',this)">Smooth</button>
+            </div>
+            <!-- Label mode -->
+            <div class="section-label" style="margin-bottom:4px">ค่าบนจุด</div>
+            <div class="seg" id="lblseg0" style="margin-bottom:10px">
+              <button class="on" onclick="setLbl(0,'none',this)">ไม่แสดง</button>
+              <button onclick="setLbl(0,'both',this)">(x, y)</button>
+              <button onclick="setLbl(0,'x',this)">X only</button>
+              <button onclick="setLbl(0,'y',this)">Y only</button>
+            </div>
+            <div class="tgl" style="margin-bottom:10px"><input type="checkbox" id="dstr0" checked><label for="dstr0">แสดง Trendline</label></div>
+            <div class="dt-wrap"><table><thead><tr><th>X</th><th>Y</th><th style="width:36px"></th></tr></thead><tbody id="dtb0"></tbody></table></div>
+            <div class="btn-row"><button class="btn" onclick="addRow(0)">+ แถว</button><button class="btn btn-accent" onclick="plotChart()">▶ Plot</button></div>
+          </div>
+
+          <!-- DS 1 -->
+          <div class="ds" id="dsp1">
+            <div class="ds-hdr">
+              <input type="checkbox" id="dse1">
+              <div class="ds-dot" id="dot1" style="background:#16a34a"></div>
+              <input type="text" id="dsname1" value="Dataset 2" placeholder="ชื่อ dataset">
+            </div>
+            <div class="cp-pair">
+              <div class="cp-item"><label>สีจุด</label><div class="cp-swatch"><input type="color" id="dscol1" value="#16a34a" oninput="document.getElementById('dot1').style.background=this.value"></div></div>
+              <div class="cp-item"><label>Trendline</label><div class="cp-swatch"><input type="color" id="dstrcol1" value="#d97706"></div></div>
+            </div>
+            <div class="section-label" style="margin-bottom:4px">แกน Y</div>
+            <div class="seg" id="yaxseg1" style="margin-bottom:10px">
+              <button class="on" onclick="setDsY(1,1,this)">Y1</button>
+              <button onclick="setDsY(1,2,this)" style="display:none">Y2</button>
+              <button onclick="setDsY(1,3,this)" style="display:none">Y3</button>
+            </div>
+            <div class="section-label" style="margin-bottom:4px">รูปแบบเส้น</div>
+            <div class="seg" id="lseg1" style="margin-bottom:10px">
+              <button class="on" onclick="setLine(1,'none',this)">จุดเท่านั้น</button>
+              <button onclick="setLine(1,'line',this)">เส้นตรง</button>
+              <button onclick="setLine(1,'smooth',this)">Smooth</button>
+            </div>
+            <div class="section-label" style="margin-bottom:4px">ค่าบนจุด</div>
+            <div class="seg" id="lblseg1" style="margin-bottom:10px">
+              <button class="on" onclick="setLbl(1,'none',this)">ไม่แสดง</button>
+              <button onclick="setLbl(1,'both',this)">(x, y)</button>
+              <button onclick="setLbl(1,'x',this)">X only</button>
+              <button onclick="setLbl(1,'y',this)">Y only</button>
+            </div>
+            <div class="tgl" style="margin-bottom:10px"><input type="checkbox" id="dstr1" checked><label for="dstr1">แสดง Trendline</label></div>
+            <div class="dt-wrap"><table><thead><tr><th>X</th><th>Y</th><th style="width:36px"></th></tr></thead><tbody id="dtb1"></tbody></table></div>
+            <div class="btn-row"><button class="btn" onclick="addRow(1)">+ แถว</button><button class="btn btn-accent" onclick="plotChart()">▶ Plot</button></div>
+          </div>
+
+          <!-- DS 2 -->
+          <div class="ds" id="dsp2">
+            <div class="ds-hdr">
+              <input type="checkbox" id="dse2">
+              <div class="ds-dot" id="dot2" style="background:#9333ea"></div>
+              <input type="text" id="dsname2" value="Dataset 3" placeholder="ชื่อ dataset">
+            </div>
+            <div class="cp-pair">
+              <div class="cp-item"><label>สีจุด</label><div class="cp-swatch"><input type="color" id="dscol2" value="#9333ea" oninput="document.getElementById('dot2').style.background=this.value"></div></div>
+              <div class="cp-item"><label>Trendline</label><div class="cp-swatch"><input type="color" id="dstrcol2" value="#0891b2"></div></div>
+            </div>
+            <div class="section-label" style="margin-bottom:4px">แกน Y</div>
+            <div class="seg" id="yaxseg2" style="margin-bottom:10px">
+              <button class="on" onclick="setDsY(2,1,this)">Y1</button>
+              <button onclick="setDsY(2,2,this)" style="display:none">Y2</button>
+              <button onclick="setDsY(2,3,this)" style="display:none">Y3</button>
+            </div>
+            <div class="section-label" style="margin-bottom:4px">รูปแบบเส้น</div>
+            <div class="seg" id="lseg2" style="margin-bottom:10px">
+              <button class="on" onclick="setLine(2,'none',this)">จุดเท่านั้น</button>
+              <button onclick="setLine(2,'line',this)">เส้นตรง</button>
+              <button onclick="setLine(2,'smooth',this)">Smooth</button>
+            </div>
+            <div class="section-label" style="margin-bottom:4px">ค่าบนจุด</div>
+            <div class="seg" id="lblseg2" style="margin-bottom:10px">
+              <button class="on" onclick="setLbl(2,'none',this)">ไม่แสดง</button>
+              <button onclick="setLbl(2,'both',this)">(x, y)</button>
+              <button onclick="setLbl(2,'x',this)">X only</button>
+              <button onclick="setLbl(2,'y',this)">Y only</button>
+            </div>
+            <div class="tgl" style="margin-bottom:10px"><input type="checkbox" id="dstr2" checked><label for="dstr2">แสดง Trendline</label></div>
+            <div class="dt-wrap"><table><thead><tr><th>X</th><th>Y</th><th style="width:36px"></th></tr></thead><tbody id="dtb2"></tbody></table></div>
+            <div class="btn-row"><button class="btn" onclick="addRow(2)">+ แถว</button><button class="btn btn-accent" onclick="plotChart()">▶ Plot</button></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div><!-- end layout -->
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card"><div class="stat-title">Slope</div><div id="svS"><div class="stat-empty">—</div></div></div>
+    <div class="stat-card"><div class="stat-title">Y-intercept</div><div id="svI"><div class="stat-empty">—</div></div></div>
+    <div class="stat-card"><div class="stat-title">R²</div><div id="svR"><div class="stat-empty">—</div></div></div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-card">
+    <div class="chart-top">
+      <div class="legend" id="legendRow"></div>
+      <div class="chart-meta">
+        <span class="ratio-badge" id="ratioLabel">5:3</span>
+        <button class="btn" style="font-size:10px;padding:5px 10px" onclick="exportChart()">↓ Export PNG</button>
+      </div>
+    </div>
+    <div class="chart-body">
+      <div class="chart-wrap">
+        <div class="chart-inner" id="chartInner"><canvas id="myChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end page -->
+
+<script>
+let chart=null, yPos='left', ratio=5/3, yMode=1;
+const rNames={[4/3]:'4:3',[5/3]:'5:3',[16/9]:'16:9',[1]:'1:1'};
+const ci=document.getElementById('chartInner');
+const lineModes=['none','none','none'];
+const lblModes=['none','none','none'];
+const dsYAxis=[1,1,1];
+
+for(let d=0;d<3;d++) for(let r=0;r<6;r++) addRow(d);
+
+function addRow(d){
+  const tb=document.getElementById('dtb'+d);
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td><input type="number" step="any" placeholder="0"></td><td><input type="number" step="any" placeholder="0"></td><td><button class="del-btn" onclick="this.closest(\'tr\').remove()">✕</button></td>';
+  tb.appendChild(tr);
+  tr.querySelectorAll('input[type=number]').forEach((inp,col)=>{
+    inp.addEventListener('keydown',e=>{
+      if(e.key!=='Enter')return;e.preventDefault();
+      const nr=tr.nextElementSibling;
+      if(nr)nr.querySelectorAll('input[type=number]')[col].focus();
+      else{addRow(d);tb.lastElementChild.querySelectorAll('input[type=number]')[col].focus();}
+    });
+  });
+}
+
+function segOn(id,btn){document.getElementById(id).querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+function switchTab(i,btn){document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');document.querySelectorAll('.ds').forEach(p=>p.classList.remove('on'));document.getElementById('dsp'+i).classList.add('on');}
+function setYMode(n,btn){
+  yMode=n;segOn('yModeSeg',btn);
+  ['row_y2','row_y3'].forEach((id,i)=>document.getElementById(id).classList.toggle('hidden',n<i+2));
+  ['y2range','y3range'].forEach((id,i)=>document.getElementById(id).classList.toggle('hidden',n<i+2));
+  for(let d=0;d<3;d++){
+    const btns=document.getElementById('yaxseg'+d).querySelectorAll('button');
+    btns[1].style.display=n>=2?'':'none';btns[2].style.display=n>=3?'':'none';
+    if(dsYAxis[d]>n){dsYAxis[d]=1;btns.forEach(b=>b.classList.remove('on'));btns[0].classList.add('on');}
+  }
+}
+function setYPos(v,btn){yPos=v;segOn('yPosSeg',btn);}
+function setRatio(r,btn){ratio=r;segOn('ratioSeg',btn);updateSize();document.getElementById('ratioLabel').textContent=rNames[r]||r.toFixed(2);}
+function setDsY(d,ax,btn){dsYAxis[d]=ax;segOn('yaxseg'+d,btn);}
+function setLine(d,m,btn){lineModes[d]=m;segOn('lseg'+d,btn);}
+function setLbl(d,m,btn){lblModes[d]=m;segOn('lblseg'+d,btn);}
+function updateSize(){const w=ci.offsetWidth||560;const h=Math.round(w/ratio);ci.style.height=h+'px';document.getElementById('myChart').style.height=h+'px';if(chart)chart.resize();}
+function getN(id){const v=document.getElementById(id).value;return v===''?null:parseFloat(v);}
+function getS(id){return document.getElementById(id).value.trim();}
+function fmt(n){return(Math.abs(n)<0.001||Math.abs(n)>=10000)?n.toExponential(3):parseFloat(n.toFixed(4)).toString();}
+function getRows(d){return[...document.getElementById('dtb'+d).querySelectorAll('tr')].map(r=>{const ins=r.querySelectorAll('input[type=number]');const x=parseFloat(ins[0].value),y=parseFloat(ins[1].value);return(!isNaN(x)&&!isNaN(y))?{x,y}:null;}).filter(Boolean);}
+function linReg(pts){const n=pts.length,xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);const sx=xs.reduce((a,b)=>a+b,0),sy=ys.reduce((a,b)=>a+b,0);const sxy=pts.reduce((a,p)=>a+p.x*p.y,0),sx2=xs.reduce((a,b)=>a+b*b,0);const denom=n*sx2-sx*sx;if(Math.abs(denom)<1e-12)return null;const slope=(n*sxy-sx*sy)/denom,intercept=(sy-slope*sx)/n;const ym=sy/n,ss=ys.reduce((a,v)=>a+(v-ym)**2,0);const sr=pts.reduce((a,p)=>a+(p.y-(slope*p.x+intercept))**2,0);return{slope,intercept,r2:ss<1e-12?1:1-sr/ss};}
+function genMinor(min,max,maj,minor){if(!minor||minor<=0||!maj||maj<=0||minor>=maj)return[];const t=[];const s=Math.ceil((min-1e-9)/minor)*minor;for(let v=s;v<=max+1e-9;v=parseFloat((v+minor).toFixed(12))){const rv=parseFloat(v.toFixed(10));if(Math.abs(rv/maj-Math.round(rv/maj))>1e-6)t.push(rv);}return t;}
+function makeLbl(pt,mode){if(mode==='both')return`(${fmt(pt.x)}, ${fmt(pt.y)})`;if(mode==='x')return`${fmt(pt.x)}`;if(mode==='y')return`${fmt(pt.y)}`;return null;}
+function exportChart(){if(!chart){alert('กด Plot ก่อน');return;}const a=document.createElement('a');a.download=(getS('title')||'graph').replace(/\s+/g,'_')+'.png';a.href=document.getElementById('myChart').toDataURL('image/png');document.body.appendChild(a);a.click();document.body.removeChild(a);}
+
+function plotChart(){
+  const allPts=[],regs=[],ptCols=[],trCols=[],labels=[],showTrend=[],modes=[],dsAxes=[];
+  for(let d=0;d<3;d++){
+    if(!document.getElementById('dse'+d).checked){allPts.push([]);regs.push(null);ptCols.push(null);trCols.push(null);labels.push(null);showTrend.push(false);modes.push('none');dsAxes.push(1);continue;}
+    const pts=getRows(d);pts.sort((a,b)=>a.x-b.x);
+    allPts.push(pts);ptCols.push(document.getElementById('dscol'+d).value);trCols.push(document.getElementById('dstrcol'+d).value);
+    labels.push(document.getElementById('dsname'+d).value||'Dataset '+(d+1));
+    regs.push(pts.length>=2?linReg(pts):null);showTrend.push(document.getElementById('dstr'+d).checked);
+    modes.push(lineModes[d]);dsAxes.push(Math.min(dsYAxis[d],yMode));
+  }
+  ['svS','svI','svR'].forEach(id=>document.getElementById(id).innerHTML='');
+  let any=false;
+  for(let d=0;d<3;d++){if(!regs[d])continue;any=true;const{slope,intercept,r2}=regs[d];[fmt(slope),fmt(intercept),r2.toFixed(4)].forEach((v,i)=>{const row=document.createElement('div');row.className='stat-row';row.innerHTML=`<div class="stat-dot" style="background:${ptCols[d]}"></div><span class="stat-val">${v}</span><span class="stat-name">${labels[d]}</span>`;document.getElementById(['svS','svI','svR'][i]).appendChild(row);});}
+  if(!any)['svS','svI','svR'].forEach(id=>document.getElementById(id).innerHTML='<div class="stat-empty">—</div>');
+  const leg=document.getElementById('legendRow');leg.innerHTML='';
+  for(let d=0;d<3;d++){if(!labels[d])continue;const li=document.createElement('div');li.className='leg';const ax=yMode>1?` · Y${dsAxes[d]}`:'';li.innerHTML=`<div class="leg-dot" style="background:${ptCols[d]}"></div><span>${labels[d]}${ax}</span>`;leg.appendChild(li);}
+  const allX=[],allY=[];allPts.forEach(pts=>pts.forEach(p=>{allX.push(p.x);allY.push(p.y);}));
+  if(!allX.length){alert('ไม่มีข้อมูล');return;}
+  const xmin=getN('xmin')??Math.min(...allX),xmax=getN('xmax')??Math.max(...allX);
+  const ymin=getN('ymin')??Math.min(...allY),ymax=getN('ymax')??Math.max(...allY);
+  const xMaj=getN('xmajor'),yMaj=getN('ymajor');
+  const xMinT=genMinor(xmin,xmax,xMaj,getN('xminor'));
+  const yMinT=genMinor(ymin,ymax,yMaj,getN('yminor'));
+  const xAC=document.getElementById('xAxisColor').value;
+  const yAC=document.getElementById('yAxisColor').value;
+  updateSize();
+
+  const whiteBg={id:'wb',beforeDraw(c){const{ctx}=c;ctx.save();ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.restore();}};
+  const plug={
+    id:'main',
+    beforeDatasetsDraw(c){
+      const{ctx,chartArea:{left,right,top,bottom},scales}=c;
+      const x=scales.x,y=scales.y1;
+      ctx.save();
+      ctx.strokeStyle='rgba(0,0,0,0.05)';ctx.lineWidth=0.5;
+      xMinT.forEach(v=>{const p=x.getPixelForValue(v);if(p>=left&&p<=right){ctx.beginPath();ctx.moveTo(p,top);ctx.lineTo(p,bottom);ctx.stroke();}});
+      yMinT.forEach(v=>{const p=y.getPixelForValue(v);if(p>=top&&p<=bottom){ctx.beginPath();ctx.moveTo(left,p);ctx.lineTo(right,p);ctx.stroke();}});
+      const ay=(ymin<=0&&ymax>=0)?y.getPixelForValue(0):bottom;
+      let ax=left;
+      if(yPos==='right')ax=right;
+      else if(yPos==='center'&&xmin<=0&&xmax>=0)ax=x.getPixelForValue(0);
+      ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.8;
+      xMinT.forEach(v=>{const p=x.getPixelForValue(v);if(p>=left&&p<=right){ctx.beginPath();ctx.moveTo(p,ay-3);ctx.lineTo(p,ay+3);ctx.stroke();}});
+      yMinT.forEach(v=>{const p=y.getPixelForValue(v);if(p>=top&&p<=bottom){ctx.beginPath();ctx.moveTo(ax-3,p);ctx.lineTo(ax+3,p);ctx.stroke();}});
+      ctx.save();ctx.beginPath();ctx.rect(left,top,right-left,bottom-top);ctx.clip();
+      for(let d=0;d<3;d++){
+        if(!regs[d]||!showTrend[d])continue;
+        const sc=scales['y'+dsAxes[d]]||y;const{slope,intercept}=regs[d];
+        ctx.strokeStyle=trCols[d];ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
+        ctx.beginPath();ctx.moveTo(x.getPixelForValue(xmin),sc.getPixelForValue(slope*xmin+intercept));ctx.lineTo(x.getPixelForValue(xmax),sc.getPixelForValue(slope*xmax+intercept));ctx.stroke();
+      }
+      ctx.setLineDash([]);ctx.restore();ctx.restore();
+    },
+    afterDatasetsDraw(c){
+      const{ctx,chartArea:{left,right,top,bottom},scales}=c;
+      const x=scales.x,y=scales.y1;
+      ctx.save();
+      const ay=(ymin<=0&&ymax>=0)?y.getPixelForValue(0):bottom;
+      let ax=left;if(yPos==='right')ax=right;else if(yPos==='center'&&xmin<=0&&xmax>=0)ax=x.getPixelForValue(0);
+      ctx.strokeStyle=xAC;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(left,ay);ctx.lineTo(right,ay);ctx.stroke();
+      ctx.strokeStyle=yAC;ctx.beginPath();ctx.moveTo(ax,top);ctx.lineTo(ax,bottom);ctx.stroke();
+      if(yPos==='both'){ctx.beginPath();ctx.moveTo(right,top);ctx.lineTo(right,bottom);ctx.stroke();}
+      if(yPos==='center'&&xmin<=0&&xmax>=0){
+        ctx.fillStyle='#444';ctx.font='10px DM Sans,sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+        y.ticks.forEach(t=>{const p=y.getPixelForValue(t.value);if(p>=top&&p<=bottom&&Math.abs(t.value)>1e-9){ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(ax-3,p);ctx.lineTo(ax,p);ctx.stroke();ctx.fillText(parseFloat(t.value.toFixed(5)).toString(),ax-5,p);}});
+      }
+      ctx.font='10px DM Mono,monospace';ctx.textAlign='center';ctx.textBaseline='bottom';
+      for(let d=0;d<3;d++){
+        const mode=lblModes[d];if(mode==='none'||!allPts[d]||!allPts[d].length)continue;
+        const sc=scales['y'+dsAxes[d]]||y;
+        allPts[d].forEach(pt=>{
+          const px=x.getPixelForValue(pt.x),py=sc.getPixelForValue(pt.y);
+          if(px<left||px>right||py<top||py>bottom)return;
+          const txt=makeLbl(pt,mode);if(!txt)return;
+          const tw=ctx.measureText(txt).width;
+          ctx.fillStyle='rgba(255,255,255,.92)';ctx.beginPath();ctx.roundRect(px-tw/2-3,py-20,tw+6,14,3);ctx.fill();
+          ctx.fillStyle=ptCols[d];ctx.fillText(txt,px,py-8);
+        });
+      }
+      if(document.getElementById('showEq').checked){
+        ctx.font='600 10px DM Mono,monospace';
+        const act=[];for(let d=0;d<3;d++){if(regs[d])act.push(d);}
+        const lh=13,pad=4;let yo=bottom-pad;
+        for(let i=act.length-1;i>=0;i--){
+          const d=act[i];const{slope,intercept,r2}=regs[d];
+          const sign=intercept<0?'− ':'+ ';
+          const lines=document.getElementById('showR2c').checked?[`y = ${fmt(slope)}x ${sign}${fmt(Math.abs(intercept))}`,`R² = ${r2.toFixed(4)}`]:[`y = ${fmt(slope)}x ${sign}${fmt(Math.abs(intercept))}`];
+          const bh=lines.length*lh+pad*2;yo-=bh;
+          const mw=Math.max(...lines.map(l=>ctx.measureText(l).width));
+          ctx.fillStyle='rgba(255,255,255,.95)';ctx.fillRect(left+6,yo,mw+pad*2+4,bh);
+          ctx.fillStyle=trCols[d]||ptCols[d];ctx.fillRect(left+6,yo,3,bh);
+          ctx.fillStyle=trCols[d]||ptCols[d];
+          lines.forEach((l,li)=>ctx.fillText(l,left+6+pad+3,yo+pad+li*lh));yo-=4;
+        }
+      }
+      ctx.restore();
+    }
+  };
+
+  const chartDS=[];
+  for(let d=0;d<3;d++){
+    const pts=allPts[d];if(!pts||!pts.length)continue;
+    const m=modes[d],sl=(m==='line'||m==='smooth'),tn=m==='smooth'?0.4:0;
+    chartDS.push({label:labels[d],data:pts,yAxisID:'y'+dsAxes[d],backgroundColor:ptCols[d],borderColor:ptCols[d],borderWidth:1.5,pointRadius:5,pointHoverRadius:8,pointBackgroundColor:ptCols[d],pointBorderColor:'#fff',pointBorderWidth:2,showLine:sl,tension:tn,fill:false});
+  }
+  if(!chartDS.length){alert('ไม่มี dataset');return;}
+
+  const yPosMain=yPos==='right'?'right':'left';
+  const y1lbl=getS('ylabel1'),y2lbl=getS('ylabel2'),y3lbl=getS('ylabel3');
+  const scl={
+    x:{type:'linear',min:xmin,max:xmax,border:{display:false},title:{display:!!getS('xlabel'),text:getS('xlabel'),color:'#555',font:{size:11,family:'DM Sans'}},ticks:{color:'#888',font:{size:10,family:'DM Mono'},...(xMaj?{stepSize:xMaj}:{})},grid:{color:'rgba(0,0,0,0.05)'}},
+    y1:{min:ymin,max:ymax,position:yPosMain,border:{display:false},title:{display:!!(y1lbl),text:y1lbl,color:'#555',font:{size:11,family:'DM Sans'}},ticks:{color:'#888',font:{size:10,family:'DM Mono'},display:yPos!=='center',...(yMaj?{stepSize:yMaj}:{})},grid:{color:'rgba(0,0,0,0.05)'}}
+  };
+  if(yPos==='both')scl.y1_mirror={min:ymin,max:ymax,position:'right',border:{display:false},title:{display:false},ticks:{color:'#888',font:{size:10,family:'DM Mono'},...(yMaj?{stepSize:yMaj}:{})},grid:{drawOnChartArea:false}};
+  if(yMode>=2){const mn=getN('y2min'),mx=getN('y2max'),mj=getN('y2major');scl.y2={position:'right',border:{display:false},title:{display:true,text:y2lbl||'Y2',color:'#555',font:{size:11,family:'DM Sans'}},...(mn!==null?{min:mn}:{}),...(mx!==null?{max:mx}:{}),ticks:{color:'#888',font:{size:10,family:'DM Mono'},...(mj?{stepSize:mj}:{})},grid:{drawOnChartArea:false}};}
+  if(yMode>=3){const mn=getN('y3min'),mx=getN('y3max'),mj=getN('y3major');scl.y3={position:'right',border:{display:false},title:{display:true,text:y3lbl||'Y3',color:'#555',font:{size:11,family:'DM Sans'}},...(mn!==null?{min:mn}:{}),...(mx!==null?{max:mx}:{}),ticks:{color:'#888',font:{size:10,family:'DM Mono'},...(mj?{stepSize:mj}:{})},grid:{drawOnChartArea:false},offset:true};}
+
+  if(chart)chart.destroy();
+  chart=new Chart(document.getElementById('myChart'),{
+    type:'line',plugins:[whiteBg,plug],data:{datasets:chartDS},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},title:{display:!!getS('title'),text:getS('title'),font:{size:13,weight:'600',family:'DM Sans'},color:'#1a1a18'},tooltip:{callbacks:{label:ctx=>`(${fmt(ctx.parsed.x)}, ${fmt(ctx.parsed.y)})`},bodyFont:{family:'DM Mono'}}},
+      scales:scl}
+  });
+}
+
+window.addEventListener('load',()=>updateSize());
+window.addEventListener('resize',()=>updateSize());
+</script>
+</body>
+</html>
